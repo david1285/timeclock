@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taskflow — Manager Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #0f0f11; color: #e2e2e8; min-height: 100vh; }
+
+/* ── Password screen ── */
+.pw-screen {
+  position: fixed; inset: 0; background: #0f0f11;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999;
+}
+.pw-card {
+  background: #16161a; border: 1px solid #2a2a35; border-radius: 16px;
+  padding: 36px 32px; width: 340px; max-width: 92vw;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+}
+.pw-logo { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+.pw-logo span { color: #7b6ef6; }
+.pw-title { font-size: 13px; color: #555568; letter-spacing: 0.04em; margin-top: -10px; }
+.pw-input {
+  width: 100%; background: #1e1e26; border: 1px solid #2a2a35; border-radius: 10px;
+  color: #e2e2e8; font-family: 'DM Mono', monospace; font-size: 18px;
+  padding: 12px 16px; outline: none; text-align: center; letter-spacing: 0.15em;
+  transition: border-color 0.15s;
+}
+.pw-input:focus { border-color: #7b6ef6; }
+.pw-input.error { border-color: #e87d5a; animation: shake 0.3s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+.pw-btn {
+  width: 100%; background: #7b6ef6; color: #fff; border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  padding: 12px; cursor: pointer; transition: background 0.15s;
+}
+.pw-btn:hover { background: #8f84f8; }
+.pw-error { font-size: 12px; color: #e87d5a; height: 16px; }
+
+.kb-header { background: #16161a; border-bottom: 1px solid #2a2a35; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.kb-logo { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; color: #fff; }
+.kb-logo span { color: #7b6ef6; }
+.header-subtitle { font-size: 13px; font-weight: 400; color: #555568; margin-left: 8px; }
+.kb-header-right { display: flex; gap: 10px; align-items: center; }
+.live-time { font-family: 'DM Mono', monospace; font-size: 12px; color: #555568; letter-spacing: 0.05em; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #5aba8d; display: inline-block; margin-right: 4px; animation: blink 2s ease-in-out infinite; }
+.sync-dot.offline { background: #e87d5a; animation: none; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.4} }
+.btn { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.15s; }
+.btn-ghost { background: transparent; color: #9494aa; border: 1px solid #2a2a35; }
+.btn-ghost:hover { background: #1e1e26; color: #e2e2e8; }
+.btn-primary { background: #7b6ef6; color: #fff; }
+.btn-primary:hover { background: #8f84f8; }
+.btn-green { background: rgba(90,186,141,0.15); color: #5aba8d; border: 1px solid rgba(90,186,141,0.3); }
+.btn-green:hover { background: rgba(90,186,141,0.25); }
+.btn-amber { background: rgba(240,170,85,0.15); color: #f0aa55; border: 1px solid rgba(240,170,85,0.3); }
+.btn-amber:hover { background: rgba(240,170,85,0.25); }
+
+.summary-bar { display: flex; padding: 0 24px; background: #131316; border-bottom: 1px solid #1e1e26; overflow-x: auto; }
+.summary-stat { padding: 11px 20px; border-right: 1px solid #1e1e26; display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.summary-stat:first-child { padding-left: 0; }
+.stat-label { font-size: 10px; color: #555568; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; }
+.stat-val { font-family: 'DM Mono', monospace; font-size: 18px; color: #e2e2e8; }
+.stat-val.purple { color: #7b6ef6; }
+.stat-val.green  { color: #5aba8d; }
+.stat-val.amber  { color: #f0aa55; }
+
+.page-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 20px; height: calc(100vh - 108px); overflow: hidden; }
+@media(max-width:1000px){ .page-body{grid-template-columns:1fr;height:auto;overflow:auto;} }
+.half-col { display: flex; flex-direction: column; overflow: hidden; }
+
+.panel { background: #16161a; border: 1px solid #1e1e26; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.panel-header { padding: 14px 16px; border-bottom: 1px solid #1e1e26; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+.panel-title { font-size: 15px; font-weight: 600; color: #fff; }
+.panel-subtitle { font-size: 12px; color: #666680; margin-top: 2px; }
+.panel-count { font-size: 11px; font-family: 'DM Mono', monospace; background: #1e1e26; color: #7b6ef6; border-radius: 20px; padding: 2px 8px; border: 1px solid #2a2a35; white-space: nowrap; }
+
+.job-totals-header { padding: 8px 14px; border-bottom: 1px solid #1e1e26; display: flex; align-items: center; gap: 8px; flex-shrink: 0; background: #111115; }
+.job-totals-bar { padding: 10px 16px; border-bottom: 1px solid #1e1e26; display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; background: #131318; }
+.job-total-chip { display: flex; flex-direction: column; gap: 1px; background: #1e1e26; border: 1px solid #2a2a35; border-radius: 8px; padding: 6px 12px; min-width: 90px; }
+.jtc-name { font-size: 10px; color: #666680; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.jtc-hours { font-family: 'DM Mono', monospace; font-size: 14px; color: #5aba8d; font-weight: 500; }
+
+.filters-row { padding: 10px 14px; border-bottom: 1px solid #1e1e26; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex-shrink: 0; }
+.fi { font-family: 'DM Sans', sans-serif; font-size: 12px; background: #1e1e26; border: 1px solid #2a2a35; border-radius: 7px; color: #e2e2e8; padding: 6px 10px; outline: none; transition: border-color 0.15s; }
+.fi:focus { border-color: #7b6ef6; }
+.fi option { background: #1e1e26; }
+.fi-search { flex: 1; min-width: 120px; }
+.fi-select { min-width: 120px; }
+.fi-date { min-width: 130px; }
+.sort-row { padding: 7px 14px; border-bottom: 1px solid #1e1e26; display: flex; gap: 6px; align-items: center; flex-shrink: 0; background: #111115; flex-wrap: wrap; }
+.sort-label { font-size: 10px; color: #555568; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-right: 2px; }
+.sb { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 1px solid #2a2a35; background: transparent; color: #666680; cursor: pointer; transition: all 0.12s; white-space: nowrap; }
+.sb:hover { background: #1e1e26; color: #e2e2e8; }
+.sb.active { background: rgba(123,110,246,0.15); color: #7b6ef6; border-color: rgba(123,110,246,0.4); }
+.sort-dir-group { margin-left: auto; display: flex; gap: 4px; }
+
+.panel-body { overflow-y: auto; flex: 1; min-height: 0; }
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-thumb { background: #2a2a35; border-radius: 2px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead { position: sticky; top: 0; background: #16161a; z-index: 1; }
+thead tr { border-bottom: 1px solid #1e1e26; }
+th { padding: 9px 12px; text-align: left; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #555568; font-weight: 600; white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid #1a1a22; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #1a1a22; }
+.td-name { font-weight: 600; color: #e2e2e8; font-size: 13px; }
+.td-job  { color: #c0c0d0; font-size: 12px; }
+.td-mono { font-family: 'DM Mono', monospace; color: #9494aa; white-space: nowrap; font-size: 11px; }
+.td-hours { font-family: 'DM Mono', monospace; color: #5aba8d; font-weight: 500; white-space: nowrap; }
+.td-att-hours { font-family: 'DM Mono', monospace; color: #7b6ef6; font-weight: 500; white-space: nowrap; }
+.td-notes { font-size: 11px; color: #9494aa; font-style: italic; max-width: 160px; }
+.td-materials { font-size: 11px; color: #7b6ef6; max-width: 140px; }
+.td-actions { white-space: nowrap; }
+.row-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.12s; }
+tr:hover .row-actions { opacity: 1; }
+.row-btn { background: none; border: none; cursor: pointer; padding: 3px 5px; border-radius: 4px; font-size: 12px; color: #555568; transition: all 0.1s; }
+.row-btn:hover { background: #2a2a35; color: #e2e2e8; }
+.row-btn.del:hover { background: #3a1a1a; color: #e87d5a; }
+.empty-table { text-align: center; padding: 40px 20px; color: #3a3a4a; font-size: 13px; }
+.amended-badge { font-size: 9px; font-family: 'DM Mono', monospace; background: rgba(240,170,85,0.15); color: #f0aa55; border: 1px solid rgba(240,170,85,0.3); border-radius: 4px; padding: 1px 5px; vertical-align: middle; margin-left: 3px; }
+.manual-badge  { font-size: 9px; font-family: 'DM Mono', monospace; background: rgba(123,110,246,0.15); color: #7b6ef6; border: 1px solid rgba(123,110,246,0.3); border-radius: 4px; padding: 1px 5px; vertical-align: middle; margin-left: 3px; }
+
+.week-nav { padding: 10px 14px; border-bottom: 1px solid #1e1e26; display: flex; align-items: center; gap: 8px; flex-shrink: 0; background: #111115; }
+.week-nav-btn { background: #1e1e26; border: 1px solid #2a2a35; border-radius: 7px; color: #9494aa; font-size: 16px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; flex-shrink: 0; }
+.week-nav-btn:hover { background: #2a2a35; color: #e2e2e8; }
+.week-label { font-family: 'DM Mono', monospace; font-size: 12px; color: #e2e2e8; flex: 1; text-align: center; }
+.week-current-btn { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(123,110,246,0.35); background: rgba(123,110,246,0.1); color: #7b6ef6; cursor: pointer; transition: all 0.12s; flex-shrink: 0; }
+.week-current-btn:hover { background: rgba(123,110,246,0.2); }
+
+.emp-week-strip { padding: 10px 14px; border-bottom: 1px solid #1e1e26; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; background: #13131a; max-height: 200px; overflow-y: auto; }
+.emp-week-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #1e1e26; border-radius: 7px; border: 1px solid #2a2a35; }
+.ewr-name { font-size: 13px; font-weight: 600; color: #e2e2e8; }
+.ewr-role { font-size: 11px; color: #666680; }
+.ewr-hours { font-family: 'DM Mono', monospace; font-size: 14px; color: #f0aa55; font-weight: 500; }
+.ewr-sessions { font-size: 11px; color: #555568; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: #16161a; border: 1px solid #2a2a35; border-radius: 16px; padding: 24px; width: 580px; max-width: 96vw; max-height: 92vh; overflow-y: auto; }
+.modal h3 { font-size: 16px; font-weight: 500; color: #fff; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+.modal h3 span { font-size: 11px; font-weight: 400; color: #555568; font-family: 'DM Mono', monospace; }
+.form-group { margin-bottom: 13px; }
+.form-label { font-size: 12px; color: #666680; margin-bottom: 5px; display: block; font-weight: 500; letter-spacing: 0.3px; }
+.form-input, .form-textarea, .form-select { font-family: 'DM Sans', sans-serif; font-size: 13px; background: #1e1e26; border: 1px solid #2a2a35; border-radius: 8px; color: #e2e2e8; padding: 8px 12px; width: 100%; outline: none; transition: border-color 0.15s; }
+.form-input:focus, .form-textarea:focus, .form-select:focus { border-color: #7b6ef6; }
+.form-select option { background: #1e1e26; }
+.form-textarea { resize: vertical; min-height: 65px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+.dur-preview { font-family: 'DM Mono', monospace; font-size: 13px; color: #5aba8d; margin-bottom: 13px; padding: 8px 12px; background: #13131a; border-radius: 6px; border: 1px solid #222230; }
+.original-info { font-size: 11px; color: #555568; margin-bottom: 13px; }
+
+.loading-overlay { position: fixed; inset: 0; background: #0f0f11; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; gap: 16px; }
+.loading-spinner { width: 36px; height: 36px; border: 3px solid #2a2a35; border-top-color: #7b6ef6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: #555568; }
+</style>
+</head>
+<body>
+
+<div class="pw-screen" id="pwScreen">
+  <div class="pw-card">
+    <div class="pw-logo">task<span>flow</span></div>
+    <div class="pw-title">Manager Dashboard</div>
+    <input class="pw-input" id="pwInput" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')checkPassword()" autocomplete="off" autocorrect="off" spellcheck="false">
+    <div class="pw-error" id="pwError"></div>
+    <button class="pw-btn" onclick="checkPassword()">Sign In</button>
+  </div>
+</div>
+
+<div id="appShell" style="display:none;">
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading data…</div>
+</div>
+
+<div class="kb-header">
+  <div style="display:flex;align-items:center;">
+    <div class="kb-logo">task<span>flow</span><span class="header-subtitle">— Manager Dashboard</span></div>
+  </div>
+  <div class="kb-header-right">
+    <div class="live-time"><span class="sync-dot" id="syncDot"></span><span id="liveClock">--:--:--</span></div>
+    <button class="btn btn-ghost" onclick="openManualJobEntry()">+ Job Entry</button>
+    <button class="btn btn-amber" onclick="openManualAttEntry()">+ Attendance Entry</button>
+    <button class="btn btn-green" onclick="exportJobCSV()">⬇ Job CSV</button>
+    <button class="btn btn-green" onclick="exportAttCSV()">⬇ Att CSV</button>
+  </div>
+</div>
+
+<div class="summary-bar">
+  <div class="summary-stat"><span class="stat-label">Filtered Job Hrs</span><span class="stat-val purple" id="statFiltered">0.00h</span></div>
+  <div class="summary-stat"><span class="stat-label">Today's Job Hrs</span><span class="stat-val" id="statToday">0.00h</span></div>
+  <div class="summary-stat"><span class="stat-label">This Week Jobs</span><span class="stat-val green" id="statWeek">0.00h</span></div>
+  <div class="summary-stat"><span class="stat-label">Total Entries</span><span class="stat-val" id="statTotal">0</span></div>
+  <div class="summary-stat"><span class="stat-label">Att Entries</span><span class="stat-val amber" id="statAtt">0</span></div>
+  <div class="summary-stat"><span class="stat-label">Employees</span><span class="stat-val" id="statEmps">0</span></div>
+</div>
+
+<div class="page-body">
+  <!-- LEFT: Job Log -->
+  <div class="half-col">
+    <div class="panel">
+      <div class="panel-header">
+        <div><div class="panel-title">Job Time Log</div><div class="panel-subtitle">All recorded job sessions</div></div>
+        <span class="panel-count" id="jobCountBadge">0 entries</span>
+      </div>
+      <div class="job-totals-header">
+        <button class="week-nav-btn" onclick="shiftJobWeek(-1)">‹</button>
+        <div class="week-label" id="jobWeekLabel">—</div>
+        <button class="week-current-btn" onclick="goJobCurrentWeek()">This Week</button>
+        <button class="week-nav-btn" onclick="shiftJobWeek(1)">›</button>
+      </div>
+      <div class="job-totals-bar" id="jobTotalsBar"></div>
+      <div class="filters-row">
+        <input class="fi fi-search" id="jSearch" placeholder="Search name, job, notes…" oninput="applyJobFilters()">
+        <select class="fi fi-select" id="jEmployee" onchange="applyJobFilters()"><option value="">All employees</option></select>
+        <select class="fi fi-select" id="jJob"      onchange="applyJobFilters()"><option value="">All jobs</option></select>
+        <input class="fi fi-date" type="date" id="jDateFrom" onchange="applyJobFilters()">
+        <input class="fi fi-date" type="date" id="jDateTo"   onchange="applyJobFilters()">
+        <button class="sb" onclick="clearJobFilters()">Clear</button>
+      </div>
+      <div class="sort-row">
+        <span class="sort-label">Sort</span>
+        <button class="sb" id="jsort-date"     onclick="setJobSort('date')">Date</button>
+        <button class="sb" id="jsort-employee" onclick="setJobSort('employee')">Employee</button>
+        <button class="sb" id="jsort-job"      onclick="setJobSort('job')">Job</button>
+        <button class="sb" id="jsort-hours"    onclick="setJobSort('hours')">Hours</button>
+        <div class="sort-dir-group">
+          <button class="sb" id="jdir-desc" onclick="setJobDir('desc')">↓ Newest</button>
+          <button class="sb" id="jdir-asc"  onclick="setJobDir('asc')">↑ Oldest</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Employee</th><th>Job</th><th>Date</th><th>In</th><th>Out</th><th>Hrs</th><th>Notes</th><th>Materials</th><th></th></tr></thead>
+        <tbody id="jobTableBody"></tbody></table>
+        <div id="jobEmpty" class="empty-table" style="display:none;">No entries match your filters.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Attendance Log -->
+  <div class="half-col">
+    <div class="panel">
+      <div class="panel-header">
+        <div><div class="panel-title">Attendance Log</div><div class="panel-subtitle">Daily clock in / out</div></div>
+        <span class="panel-count" id="attCountBadge">0 entries</span>
+      </div>
+      <div class="week-nav">
+        <button class="week-nav-btn" onclick="shiftWeek(-1)">‹</button>
+        <div class="week-label" id="weekLabel">—</div>
+        <button class="week-current-btn" onclick="goCurrentWeek()">This Week</button>
+        <button class="week-nav-btn" onclick="shiftWeek(1)">›</button>
+      </div>
+      <div class="emp-week-strip" id="empWeekStrip"></div>
+      <div class="filters-row">
+        <input class="fi fi-search" id="aSearch" placeholder="Search employee…" oninput="applyAttFilters()" style="flex:1;min-width:100px;">
+        <select class="fi fi-select" id="aEmployee" onchange="applyAttFilters()"><option value="">All employees</option></select>
+        <button class="sb" onclick="clearAttFilters()">Clear</button>
+      </div>
+      <div class="sort-row">
+        <span class="sort-label">Sort</span>
+        <button class="sb" id="asort-date"     onclick="setAttSort('date')">Date</button>
+        <button class="sb" id="asort-employee" onclick="setAttSort('employee')">Employee</button>
+        <button class="sb" id="asort-hours"    onclick="setAttSort('hours')">Hours</button>
+        <div class="sort-dir-group">
+          <button class="sb" id="adir-desc" onclick="setAttDir('desc')">↓ Newest</button>
+          <button class="sb" id="adir-asc"  onclick="setAttDir('asc')">↑ Oldest</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <table><thead><tr><th>Employee</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th></th></tr></thead>
+        <tbody id="attTableBody"></tbody></table>
+        <div id="attEmpty" class="empty-table" style="display:none;">No attendance entries for this week.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalContainer"></div>
+</div><!-- /appShell -->
+
+<script>
+const PW_HASH = 'ab4dfa2f5467972a96f05c51ec7b361d77ab760c92c6acf2547b940c63ca17be';
+async function hashStr(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function checkPassword() {
+  const val = document.getElementById('pwInput').value;
+  const hash = await hashStr(val);
+  if (hash === PW_HASH) {
+    sessionStorage.setItem('tc_mgr_auth','1');
+    document.getElementById('pwScreen').style.display = 'none';
+    document.getElementById('appShell').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+  } else {
+    const inp = document.getElementById('pwInput');
+    const err = document.getElementById('pwError');
+    inp.classList.add('error');
+    err.textContent = 'Incorrect password. Try again.';
+    inp.value = '';
+    setTimeout(()=>{ inp.classList.remove('error'); err.textContent=''; }, 1500);
+  }
+}
+if (sessionStorage.getItem('tc_mgr_auth') === '1') {
+  document.getElementById('pwScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+} else {
+  setTimeout(()=>document.getElementById('pwInput').focus(), 100);
+}
+</script>
+
+<script type="module">
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection, doc,
+         onSnapshot, setDoc, updateDoc,
+         deleteDoc, query, orderBy }              from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBNorf5AU_cS-0N_M2C5DMgRHesrd6Yh5s",
+  authDomain:        "employee-timeclock-fca3a.firebaseapp.com",
+  projectId:         "employee-timeclock-fca3a",
+  storageBucket:     "employee-timeclock-fca3a.firebasestorage.app",
+  messagingSenderId: "1008260914486",
+  appId:             "1:1008260914486:web:92e113e41a88cccd822797"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+let employees = [], jobs = [], logEntries = [], attendanceLog = [];
+let dbReady = 0;
+
+function checkReady() {
+  dbReady++;
+  if (dbReady >= 4) {
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('syncDot').classList.remove('offline');
+    populateDropdowns(); applyJobFilters(); applyAttFilters();
+    renderEmpWeekStrip(); renderStats();
+  }
+}
+
+onSnapshot(collection(db,'employees'), snap => {
+  employees = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  checkReady(); populateDropdowns(); applyAttFilters(); renderEmpWeekStrip(); renderStats();
+});
+onSnapshot(collection(db,'jobs'), snap => {
+  jobs = snap.docs.map(d=>({id:d.id,...d.data()}));
+  checkReady(); populateDropdowns(); applyJobFilters();
+});
+onSnapshot(query(collection(db,'jobLog'),orderBy('start','desc')), snap => {
+  logEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
+  checkReady(); populateDropdowns(); applyJobFilters(); renderStats();
+});
+onSnapshot(query(collection(db,'attendanceLog'),orderBy('start','desc')), snap => {
+  attendanceLog = snap.docs.map(d=>({id:d.id,...d.data()}));
+  checkReady(); applyAttFilters(); renderEmpWeekStrip(); renderStats();
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function durHours(ms)    { return (ms/3600000).toFixed(2); }
+function fmtTime(ts)     { return new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+function fmtDateShort(ts){ return new Date(ts).toLocaleDateString([],{month:'short',day:'numeric'}); }
+function isoDate(ts)     { return new Date(ts).toISOString().slice(0,10); }
+function isToday(ts)     { const d=new Date(ts),n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
+function esc(s)          { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toLocalDT(ts)   { const d=new Date(ts),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+function getWeekStart(offset=0) {
+  const now=new Date(), d=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  d.setDate(d.getDate()-d.getDay()+offset*7); return d.getTime();
+}
+function getWeekEnd(offset=0) { return getWeekStart(offset)+7*24*60*60*1000; }
+
+let viewWeekOffset=0, jobWeekOffset=0;
+
+function shiftWeek(d)    { viewWeekOffset+=d; if(viewWeekOffset>0)viewWeekOffset=0; updateWeekLabel(); applyAttFilters(); renderEmpWeekStrip(); }
+function goCurrentWeek() { viewWeekOffset=0; updateWeekLabel(); applyAttFilters(); renderEmpWeekStrip(); }
+function updateWeekLabel() {
+  const ws=new Date(getWeekStart(viewWeekOffset)),we=new Date(getWeekEnd(viewWeekOffset)-86400000),o={month:'short',day:'numeric'};
+  document.getElementById('weekLabel').textContent = viewWeekOffset===0 ? `This week — ${ws.toLocaleDateString([],o)} → ${we.toLocaleDateString([],o)}` : `${ws.toLocaleDateString([],o)} → ${we.toLocaleDateString([],o)}`;
+}
+function shiftJobWeek(d)    { jobWeekOffset+=d; if(jobWeekOffset>0)jobWeekOffset=0; updateJobWeekLabel(); renderJobTotals(); }
+function goJobCurrentWeek() { jobWeekOffset=0; updateJobWeekLabel(); renderJobTotals(); }
+function updateJobWeekLabel() {
+  const ws=new Date(getWeekStart(jobWeekOffset)),we=new Date(getWeekEnd(jobWeekOffset)-86400000),o={month:'short',day:'numeric'};
+  document.getElementById('jobWeekLabel').textContent = jobWeekOffset===0 ? `This week — ${ws.toLocaleDateString([],o)} → ${we.toLocaleDateString([],o)}` : `${ws.toLocaleDateString([],o)} → ${we.toLocaleDateString([],o)}`;
+}
+
+// expose week nav to global
+window.shiftWeek=shiftWeek; window.goCurrentWeek=goCurrentWeek;
+window.shiftJobWeek=shiftJobWeek; window.goJobCurrentWeek=goJobCurrentWeek;
+
+// ── Employee weekly strip ─────────────────────────────────────────────
+function renderEmpWeekStrip() {
+  const ws=getWeekStart(viewWeekOffset), we=getWeekEnd(viewWeekOffset);
+  const strip=document.getElementById('empWeekStrip');
+  if(!employees.length){strip.innerHTML='<div style="font-size:12px;color:#3a3a4a;padding:4px;">No employees</div>';return;}
+  strip.innerHTML=employees.map(emp=>{
+    const weekEntries=attendanceLog.filter(a=>a.empId===emp.id&&a.start>=ws&&a.start<we);
+    const weekMs=weekEntries.reduce((s,a)=>s+a.duration,0);
+    return `<div class="emp-week-row">
+      <div><div class="ewr-name">${esc(emp.name)}</div><div class="ewr-role">${esc(emp.role)}</div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="ewr-hours">${durHours(weekMs)}h</div>
+        <div class="ewr-sessions">${weekEntries.length} session${weekEntries.length===1?'':'s'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Job filter/sort ───────────────────────────────────────────────────
+let jobSortField='date', jobSortDir='desc', filteredJobs=[];
+
+window.setJobSort = function(f){if(jobSortField===f){jobSortDir=jobSortDir==='desc'?'asc':'desc';}else{jobSortField=f;jobSortDir='desc';}applyJobFilters();};
+window.setJobDir  = function(d){jobSortDir=d;applyJobFilters();};
+window.clearJobFilters = function(){['jSearch','jDateFrom','jDateTo'].forEach(id=>document.getElementById(id).value='');['jEmployee','jJob'].forEach(id=>document.getElementById(id).value='');applyJobFilters();};
+
+function applyJobFilters() {
+  const search=document.getElementById('jSearch')?.value.toLowerCase()||'';
+  const empF=document.getElementById('jEmployee')?.value||'';
+  const jobF=document.getElementById('jJob')?.value||'';
+  const df=document.getElementById('jDateFrom')?.value||'';
+  const dt=document.getElementById('jDateTo')?.value||'';
+  filteredJobs=logEntries.filter(e=>{
+    if(empF&&e.empName!==empF)return false;
+    if(jobF&&e.jobTitle!==jobF)return false;
+    if(df&&isoDate(e.start)<df)return false;
+    if(dt&&isoDate(e.start)>dt)return false;
+    if(search&&![e.empName,e.jobTitle,e.workNotes,e.materials].join(' ').toLowerCase().includes(search))return false;
+    return true;
+  });
+  filteredJobs.sort((a,b)=>{
+    let va,vb;
+    if(jobSortField==='date'){va=a.start;vb=b.start;}
+    else if(jobSortField==='employee'){va=a.empName;vb=b.empName;}
+    else if(jobSortField==='job'){va=a.jobTitle;vb=b.jobTitle;}
+    else{va=a.duration;vb=b.duration;}
+    if(typeof va==='string')return jobSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    return jobSortDir==='asc'?va-vb:vb-va;
+  });
+  ['date','employee','job','hours'].forEach(f=>document.getElementById('jsort-'+f)?.classList.toggle('active',f===jobSortField));
+  document.getElementById('jdir-asc')?.classList.toggle('active',jobSortDir==='asc');
+  document.getElementById('jdir-desc')?.classList.toggle('active',jobSortDir==='desc');
+  renderJobTable(); renderJobTotals(); renderStats();
+}
+
+// ── Att filter/sort ───────────────────────────────────────────────────
+let attSortField='date', attSortDir='desc', filteredAtt=[];
+
+window.setAttSort = function(f){if(attSortField===f){attSortDir=attSortDir==='desc'?'asc':'desc';}else{attSortField=f;attSortDir='desc';}applyAttFilters();};
+window.setAttDir  = function(d){attSortDir=d;applyAttFilters();};
+window.clearAttFilters = function(){document.getElementById('aSearch').value='';document.getElementById('aEmployee').value='';applyAttFilters();};
+
+function applyAttFilters() {
+  const ws=getWeekStart(viewWeekOffset), we=getWeekEnd(viewWeekOffset);
+  const search=document.getElementById('aSearch')?.value.toLowerCase()||'';
+  const empF=document.getElementById('aEmployee')?.value||'';
+  filteredAtt=attendanceLog.filter(a=>{
+    if(a.start<ws||a.start>=we)return false;
+    if(empF&&a.empName!==empF)return false;
+    if(search&&!a.empName.toLowerCase().includes(search))return false;
+    return true;
+  });
+  filteredAtt.sort((a,b)=>{
+    let va,vb;
+    if(attSortField==='date'){va=a.start;vb=b.start;}
+    else if(attSortField==='employee'){va=a.empName;vb=b.empName;}
+    else{va=a.duration;vb=b.duration;}
+    if(typeof va==='string')return attSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    return attSortDir==='asc'?va-vb:vb-va;
+  });
+  ['date','employee','hours'].forEach(f=>document.getElementById('asort-'+f)?.classList.toggle('active',f===attSortField));
+  document.getElementById('adir-asc')?.classList.toggle('active',attSortDir==='asc');
+  document.getElementById('adir-desc')?.classList.toggle('active',attSortDir==='desc');
+  renderAttTable();
+}
+
+// ── Populate dropdowns ────────────────────────────────────────────────
+function populateDropdowns() {
+  const empNames=[...new Set(logEntries.map(e=>e.empName))].sort();
+  const jobTitles=[...new Set(logEntries.map(e=>e.jobTitle))].sort();
+  const attEmps=[...new Set(attendanceLog.map(a=>a.empName))].sort();
+  const jeSel=document.getElementById('jEmployee'),jjSel=document.getElementById('jJob'),aeSel=document.getElementById('aEmployee');
+  const[jeV,jjV,aeV]=[jeSel?.value,jjSel?.value,aeSel?.value];
+  if(jeSel)jeSel.innerHTML='<option value="">All employees</option>'+empNames.map(n=>`<option value="${esc(n)}" ${jeV===n?'selected':''}>${esc(n)}</option>`).join('');
+  if(jjSel)jjSel.innerHTML='<option value="">All jobs</option>'+jobTitles.map(t=>`<option value="${esc(t)}" ${jjV===t?'selected':''}>${esc(t)}</option>`).join('');
+  if(aeSel)aeSel.innerHTML='<option value="">All employees</option>'+attEmps.map(n=>`<option value="${esc(n)}" ${aeV===n?'selected':''}>${esc(n)}</option>`).join('');
+}
+
+// ── Job totals bar ────────────────────────────────────────────────────
+function renderJobTotals() {
+  const bar=document.getElementById('jobTotalsBar');
+  const ws=getWeekStart(jobWeekOffset), we=getWeekEnd(jobWeekOffset);
+  const totals={};
+  filteredJobs.filter(e=>e.start>=ws&&e.start<we).forEach(e=>{totals[e.jobTitle]=(totals[e.jobTitle]||0)+e.duration;});
+  const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  bar.innerHTML=sorted.length?sorted.map(([n,ms])=>`<div class="job-total-chip"><div class="jtc-name" title="${esc(n)}">${esc(n)}</div><div class="jtc-hours">${durHours(ms)}h</div></div>`).join(''):'<span style="font-size:11px;color:#3a3a4a;padding:2px 0;">No entries for this week</span>';
+}
+
+// ── Tables ────────────────────────────────────────────────────────────
+function renderJobTable() {
+  const tbody=document.getElementById('jobTableBody'), empty=document.getElementById('jobEmpty');
+  document.getElementById('jobCountBadge').textContent=`${filteredJobs.length} entr${filteredJobs.length===1?'y':'ies'}`;
+  if(!filteredJobs.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=filteredJobs.map(e=>{
+    const ab=e.amended?'<span class="amended-badge">AMENDED</span>':'';
+    const mb=e.manual?'<span class="manual-badge">MANUAL</span>':'';
+    return`<tr>
+      <td class="td-name">${esc(e.empName)}</td>
+      <td class="td-job">${esc(e.jobTitle)}${ab}${mb}</td>
+      <td class="td-mono">${fmtDateShort(e.start)}</td>
+      <td class="td-mono">${fmtTime(e.start)}</td>
+      <td class="td-mono">${fmtTime(e.end)}</td>
+      <td class="td-hours">${durHours(e.duration)}h</td>
+      <td class="td-notes">${esc(e.workNotes||'—')}</td>
+      <td class="td-materials">${esc(e.materials||'—')}</td>
+      <td class="td-actions"><div class="row-actions">
+        <button class="row-btn" onclick="openEditJobEntry('${e.id}')" title="Edit">✎</button>
+        <button class="row-btn del" onclick="deleteJobEntry('${e.id}')" title="Delete">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAttTable() {
+  const tbody=document.getElementById('attTableBody'), empty=document.getElementById('attEmpty');
+  document.getElementById('attCountBadge').textContent=`${filteredAtt.length} entr${filteredAtt.length===1?'y':'ies'}`;
+  if(!filteredAtt.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=filteredAtt.map(a=>{
+    const ab=a.amended?'<span class="amended-badge">AMENDED</span>':'';
+    const mb=a.manual?'<span class="manual-badge">MANUAL</span>':'';
+    return`<tr>
+      <td class="td-name">${esc(a.empName)}${ab}${mb}</td>
+      <td class="td-mono">${fmtDateShort(a.start)}</td>
+      <td class="td-mono">${fmtTime(a.start)}</td>
+      <td class="td-mono">${fmtTime(a.end)}</td>
+      <td class="td-att-hours">${durHours(a.duration)}h</td>
+      <td class="td-actions"><div class="row-actions">
+        <button class="row-btn" onclick="openEditAttEntry('${a.id}')" title="Edit">✎</button>
+        <button class="row-btn del" onclick="deleteAttEntry('${a.id}')" title="Delete">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────
+function renderStats() {
+  let todayMs=0, weekMs=0, filteredMs=0;
+  const ws=getWeekStart(0);
+  logEntries.forEach(e=>{if(isToday(e.start))todayMs+=e.duration;if(e.start>=ws)weekMs+=e.duration;});
+  filteredJobs.forEach(e=>filteredMs+=e.duration);
+  document.getElementById('statFiltered').textContent=durHours(filteredMs)+'h';
+  document.getElementById('statToday').textContent=durHours(todayMs)+'h';
+  document.getElementById('statWeek').textContent=durHours(weekMs)+'h';
+  document.getElementById('statTotal').textContent=logEntries.length;
+  document.getElementById('statAtt').textContent=attendanceLog.length;
+  document.getElementById('statEmps').textContent=employees.length;
+}
+
+// ── Delete ────────────────────────────────────────────────────────────
+window.deleteJobEntry = async function(id) { await deleteDoc(doc(db,'jobLog',id)); };
+window.deleteAttEntry = async function(id) { await deleteDoc(doc(db,'attendanceLog',id)); };
+
+// ── Edit job entry ────────────────────────────────────────────────────
+window.openEditJobEntry = function(id) {
+  const e=logEntries.find(x=>x.id===id); if(!e)return;
+  const jobOpts=jobs.map(j=>{const emp=employees.find(x=>x.id===j.empId);return`<option value="${j.id}" ${j.id===e.jobId?'selected':''}>${esc(j.title)}${emp?' ('+esc(emp.name)+')':''}</option>`;}).join('');
+  document.getElementById('modalContainer').innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h3>Adjust Job Entry <span>${esc(e.jobTitle)}</span></h3>
+      <div class="form-group"><label class="form-label">JOB</label><select class="form-select" id="elJob">${jobOpts}</select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">CLOCK IN</label><input class="form-input" type="datetime-local" id="elStart" value="${toLocalDT(e.start)}"></div>
+        <div class="form-group"><label class="form-label">CLOCK OUT</label><input class="form-input" type="datetime-local" id="elEnd" value="${toLocalDT(e.end)}"></div>
+      </div>
+      <div class="dur-preview" id="elDur">Duration: ${durHours(e.duration)}h</div>
+      <div class="form-group"><label class="form-label">WORK NOTES</label><textarea class="form-textarea" id="elNotes" rows="3">${esc(e.workNotes||'')}</textarea></div>
+      <div class="form-group"><label class="form-label">MATERIALS USED</label><textarea class="form-textarea" id="elMaterials" rows="2">${esc(e.materials||'')}</textarea></div>
+      <div class="form-group"><label class="form-label">REASON (optional)</label><input class="form-input" id="elNote" value="${esc(e.adjustNote||'')}" placeholder="e.g. Forgot to clock out"></div>
+      <div class="original-info">Original: ${fmtDateShort(e.start)} ${fmtTime(e.start)} → ${fmtTime(e.end)} (${durHours(e.duration)}h)</div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditJobEntry('${id}')">Save</button></div>
+    </div></div>`;
+  ['elStart','elEnd'].forEach(fid=>document.getElementById(fid).addEventListener('input',()=>{
+    const s=new Date(document.getElementById('elStart').value).getTime(),en=new Date(document.getElementById('elEnd').value).getTime(),p=document.getElementById('elDur');
+    if(!s||!en||en<=s){p.style.color='#e87d5a';p.textContent='Clock-out must be after clock-in';}else{p.style.color='#5aba8d';p.textContent=`Duration: ${durHours(en-s)}h`;}
+  }));
+};
+window.saveEditJobEntry = async function(id) {
+  const ns=new Date(document.getElementById('elStart').value).getTime(),ne=new Date(document.getElementById('elEnd').value).getTime();
+  if(!ns||!ne||ne<=ns){return;}
+  const nj=document.getElementById('elJob').value,job=jobs.find(j=>j.id===nj),emp=job?employees.find(e=>e.id===job.empId):null;
+  const entry=logEntries.find(x=>x.id===id);
+  const updated={...entry,start:ns,end:ne,duration:ne-ns,jobId:nj,jobTitle:job?job.title:entry.jobTitle,empName:emp?emp.name:entry.empName,amended:true};
+  const wn=document.getElementById('elNotes').value.trim(),mt=document.getElementById('elMaterials').value.trim(),nt=document.getElementById('elNote').value.trim();
+  if(wn)updated.workNotes=wn; if(mt)updated.materials=mt; if(nt)updated.adjustNote=nt;
+  const{id:eid,...data}=updated;
+  await setDoc(doc(db,'jobLog',eid),data);
+  closeModal();
+};
+
+// ── Edit attendance entry ─────────────────────────────────────────────
+window.openEditAttEntry = function(id) {
+  const a=attendanceLog.find(x=>x.id===id); if(!a)return;
+  const empOpts=employees.map(e=>`<option value="${e.id}" ${e.name===a.empName?'selected':''}>${esc(e.name)}</option>`).join('');
+  document.getElementById('modalContainer').innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h3>Adjust Attendance <span>${esc(a.empName)}</span></h3>
+      <div class="form-group"><label class="form-label">EMPLOYEE</label><select class="form-select" id="aeEmp">${empOpts}</select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">CLOCK IN</label><input class="form-input" type="datetime-local" id="aeStart" value="${toLocalDT(a.start)}"></div>
+        <div class="form-group"><label class="form-label">CLOCK OUT</label><input class="form-input" type="datetime-local" id="aeEnd" value="${toLocalDT(a.end)}"></div>
+      </div>
+      <div class="dur-preview" id="aeDur">Duration: ${durHours(a.duration)}h</div>
+      <div class="form-group"><label class="form-label">REASON (optional)</label><input class="form-input" id="aeNote" value="${esc(a.adjustNote||'')}" placeholder="e.g. Forgot to clock out"></div>
+      <div class="original-info">Original: ${fmtDateShort(a.start)} ${fmtTime(a.start)} → ${fmtTime(a.end)} (${durHours(a.duration)}h)</div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditAttEntry('${id}')">Save</button></div>
+    </div></div>`;
+  ['aeStart','aeEnd'].forEach(fid=>document.getElementById(fid).addEventListener('input',()=>{
+    const s=new Date(document.getElementById('aeStart').value).getTime(),en=new Date(document.getElementById('aeEnd').value).getTime(),p=document.getElementById('aeDur');
+    if(!s||!en||en<=s){p.style.color='#e87d5a';p.textContent='Clock-out must be after clock-in';}else{p.style.color='#5aba8d';p.textContent=`Duration: ${durHours(en-s)}h`;}
+  }));
+};
+window.saveEditAttEntry = async function(id) {
+  const ns=new Date(document.getElementById('aeStart').value).getTime(),ne=new Date(document.getElementById('aeEnd').value).getTime();
+  if(!ns||!ne||ne<=ns)return;
+  const empId=document.getElementById('aeEmp').value,note=document.getElementById('aeNote').value.trim();
+  const a=attendanceLog.find(x=>x.id===id),emp=employees.find(e=>e.id===empId);
+  const updated={...a,start:ns,end:ne,duration:ne-ns,empId,empName:emp?emp.name:a.empName,amended:true};
+  if(note)updated.adjustNote=note;
+  const{id:aid,...data}=updated;
+  await setDoc(doc(db,'attendanceLog',aid),data);
+  closeModal();
+};
+
+// ── Manual job entry ──────────────────────────────────────────────────
+window.openManualJobEntry = function() {
+  const now=toLocalDT(Date.now());
+  const jobOpts=jobs.map(j=>{const emp=employees.find(e=>e.id===j.empId);return`<option value="${j.id}">${esc(j.title)}${emp?' ('+esc(emp.name)+')':''}</option>`;}).join('');
+  if(!jobOpts){alert('Add employees and jobs on the Employee Board first.');return;}
+  document.getElementById('modalContainer').innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h3>Manual Job Entry</h3>
+      <div class="form-group"><label class="form-label">JOB</label><select class="form-select" id="mjJob">${jobOpts}</select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">CLOCK IN</label><input class="form-input" type="datetime-local" id="mjStart" value="${now}"></div>
+        <div class="form-group"><label class="form-label">CLOCK OUT</label><input class="form-input" type="datetime-local" id="mjEnd" value="${now}"></div>
+      </div>
+      <div class="dur-preview" id="mjDur">Duration: —</div>
+      <div class="form-group"><label class="form-label">WORK NOTES</label><textarea class="form-textarea" id="mjNotes" rows="3" placeholder="Describe what was worked on…"></textarea></div>
+      <div class="form-group"><label class="form-label">MATERIALS USED</label><textarea class="form-textarea" id="mjMaterials" rows="2" placeholder="Materials used…"></textarea></div>
+      <div class="form-group"><label class="form-label">REASON (optional)</label><input class="form-input" id="mjNote" placeholder="e.g. Forgot to clock in"></div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveManualJobEntry()">Add entry</button></div>
+    </div></div>`;
+  ['mjStart','mjEnd'].forEach(fid=>document.getElementById(fid).addEventListener('input',()=>{
+    const s=new Date(document.getElementById('mjStart').value).getTime(),en=new Date(document.getElementById('mjEnd').value).getTime(),p=document.getElementById('mjDur');
+    if(!s||!en||en<=s){p.style.color='#e87d5a';p.textContent='Clock-out must be after clock-in';}else{p.style.color='#5aba8d';p.textContent=`Duration: ${durHours(en-s)}h`;}
+  }));
+};
+window.saveManualJobEntry = async function() {
+  const ns=new Date(document.getElementById('mjStart').value).getTime(),ne=new Date(document.getElementById('mjEnd').value).getTime();
+  if(!ns||!ne||ne<=ns)return;
+  const nj=document.getElementById('mjJob').value,job=jobs.find(j=>j.id===nj),emp=job?employees.find(e=>e.id===job.empId):null;
+  const wn=document.getElementById('mjNotes').value.trim(),mt=document.getElementById('mjMaterials').value.trim(),nt=document.getElementById('mjNote').value.trim();
+  const entry={id:'l'+Date.now(),jobId:nj,jobTitle:job?job.title:'—',empName:emp?emp.name:'—',start:ns,end:ne,duration:ne-ns,workNotes:wn,materials:mt,manual:true};
+  if(nt)entry.adjustNote=nt;
+  const{id:eid,...data}=entry;
+  await setDoc(doc(db,'jobLog',eid),data);
+  closeModal();
+};
+
+// ── Manual attendance entry ───────────────────────────────────────────
+window.openManualAttEntry = function() {
+  if(!employees.length){alert('Add employees on the Employee Board first.');return;}
+  const now=toLocalDT(Date.now());
+  const empOpts=employees.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  document.getElementById('modalContainer').innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h3>Manual Attendance Entry</h3>
+      <div class="form-group"><label class="form-label">EMPLOYEE</label><select class="form-select" id="maEmp">${empOpts}</select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">CLOCK IN</label><input class="form-input" type="datetime-local" id="maStart" value="${now}"></div>
+        <div class="form-group"><label class="form-label">CLOCK OUT</label><input class="form-input" type="datetime-local" id="maEnd" value="${now}"></div>
+      </div>
+      <div class="dur-preview" id="maDur">Duration: —</div>
+      <div class="form-group"><label class="form-label">REASON (optional)</label><input class="form-input" id="maNote" placeholder="e.g. Forgot to clock in"></div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-amber" onclick="saveManualAttEntry()">Add attendance entry</button></div>
+    </div></div>`;
+  ['maStart','maEnd'].forEach(fid=>document.getElementById(fid).addEventListener('input',()=>{
+    const s=new Date(document.getElementById('maStart').value).getTime(),en=new Date(document.getElementById('maEnd').value).getTime(),p=document.getElementById('maDur');
+    if(!s||!en||en<=s){p.style.color='#e87d5a';p.textContent='Clock-out must be after clock-in';}else{p.style.color='#5aba8d';p.textContent=`Duration: ${durHours(en-s)}h`;}
+  }));
+};
+window.saveManualAttEntry = async function() {
+  const ns=new Date(document.getElementById('maStart').value).getTime(),ne=new Date(document.getElementById('maEnd').value).getTime();
+  if(!ns||!ne||ne<=ns)return;
+  const empId=document.getElementById('maEmp').value,note=document.getElementById('maNote').value.trim();
+  const emp=employees.find(e=>e.id===empId);
+  const entry={id:'a'+Date.now(),empId,empName:emp?emp.name:'—',start:ns,end:ne,duration:ne-ns,manual:true};
+  if(note)entry.adjustNote=note;
+  const{id:aid,...data}=entry;
+  await setDoc(doc(db,'attendanceLog',aid),data);
+  closeModal();
+};
+
+// ── CSV exports ───────────────────────────────────────────────────────
+function dlCSV(rows,filename){const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=filename;a.click();}
+window.exportJobCSV = function(){
+  const rows=[['Employee','Job','Date','Clock In','Clock Out','Hours','Work Notes','Materials','Amended','Manual']];
+  filteredJobs.forEach(e=>rows.push([e.empName,e.jobTitle,new Date(e.start).toLocaleDateString(),fmtTime(e.start),fmtTime(e.end),durHours(e.duration),e.workNotes||'',e.materials||'',e.amended?'Yes':'',e.manual?'Yes':'']));
+  dlCSV(rows,`job_log_${isoDate(Date.now())}.csv`);
+};
+window.exportAttCSV = function(){
+  const rows=[['Employee','Date','Clock In','Clock Out','Hours','Amended','Manual','Note']];
+  filteredAtt.forEach(a=>rows.push([a.empName,new Date(a.start).toLocaleDateString(),fmtTime(a.start),fmtTime(a.end),durHours(a.duration),a.amended?'Yes':'',a.manual?'Yes':'',a.adjustNote||'']));
+  dlCSV(rows,`attendance_log_${isoDate(Date.now())}.csv`);
+};
+
+window.closeModal = function(){document.getElementById('modalContainer').innerHTML='';};
+
+setInterval(()=>{ document.getElementById('liveClock').textContent=new Date().toLocaleTimeString(); },1000);
+
+document.getElementById('liveClock').textContent=new Date().toLocaleTimeString();
+updateWeekLabel(); updateJobWeekLabel();
+document.getElementById('jsort-date').classList.add('active');
+document.getElementById('jdir-desc').classList.add('active');
+document.getElementById('asort-date').classList.add('active');
+document.getElementById('adir-desc').classList.add('active');
+</script>
+</body>
+</html>
