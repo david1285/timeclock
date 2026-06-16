@@ -276,17 +276,31 @@ async function deleteEmployee(empId) {
     ...empJobs.map(j => deleteDoc(doc(db,'jobs',j.id)))
   ]);
 }
-async function deleteJob(jobId) {
+function deleteJob(jobId) {
+  const job = jobs.find(j => j.id === jobId);
+  const title = job ? job.title : 'this job';
+  document.getElementById('modalContainer').innerHTML =
+    '<div class="modal-overlay"><div class="modal">' +
+    '<h3 style="color:#e87d5a;">Delete Job?</h3>' +
+    '<p style="font-size:14px;color:#9494aa;line-height:1.6;margin-bottom:20px;">Are you sure you want to delete <strong style="color:#e2e2e8;">' + title + '</strong>? This cannot be undone.</p>' +
+    '<div class="modal-actions">' +
+    '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>' +
+    '<button class="btn" style="background:#e87d5a;color:#fff;font-weight:600;" onclick="confirmDeleteJob(\'' + jobId + '\')">Yes, Delete</button>' +
+    '</div></div></div>';
+}
+async function confirmDeleteJob(jobId) {
   if (activeTimers[jobId]) delete activeTimers[jobId];
+  closeModal();
   await deleteDoc(doc(db,'jobs',jobId));
 }
 async function deleteLogEntry(id) { await deleteDoc(doc(db,'jobLog',id)); }
 async function deleteAttEntry(id) { await deleteDoc(doc(db,'attendanceLog',id)); }
 
 // Expose to global for onclick handlers
-window.deleteEmployee = deleteEmployee;
-window.deleteJob      = deleteJob;
-window.deleteLogEntry = deleteLogEntry;
+window.deleteEmployee  = deleteEmployee;
+window.deleteJob       = deleteJob;
+window.confirmDeleteJob= confirmDeleteJob;
+window.deleteLogEntry  = deleteLogEntry;
 
 // ── Time helpers ──────────────────────────────────────────────────────
 function formatDur(ms) {
@@ -470,7 +484,7 @@ function renderBoard() {
       </div>
       <div class="attendance-bar">
         <div class="attendance-bar-inner">
-          <span class="attendance-label">Week Att.</span>
+          <span class="attendance-label">Payroll Clock</span>
           <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center;">
             <div class="att-dot ${attRunning?'att-running':''}"></div>
             <span class="attendance-timer ${attRunning?'att-running':''}" id="att-timer-${emp.id}">${formatDur(weekAttMs)}</span>
@@ -500,7 +514,6 @@ function renderBoard() {
 
       const card = document.createElement('div');
       let cls='task-card';
-      if(!attRunning) cls+=' locked';
       if(isRunning)   cls+=' clocked-in';
       if(isHalf)      cls+=' halfway';
       if(isOver)      cls+=' over-budget';
@@ -526,7 +539,7 @@ function renderBoard() {
           ${job.estHours?`<div class="card-meta-row"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="opacity:.6;flex-shrink:0"><path d="M3 1v14M3 2h9l-2.5 4L12 10H3" stroke="#9494aa" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="meta-label">Est.:</span><span class="meta-val" style="${isOver?'color:#e87d5a':''}">${job.estHours}h${isOver?' ⚠ over':(!isOver&&totalMs>0?' ('+Math.round(totalMs/estMs*100)+'%)':'')}</span></div>`:''}
           <div class="card-actions">
-            ${isRunning?`<button class="btn-punch-out" onclick="punchOut('${job.id}')">⬛ Clock Out</button>`:`<button class="btn-punch-in" onclick="punchIn('${job.id}')">▶ Clock In</button>`}
+            ${isRunning?`<button class="btn-punch-out" onclick="punchOut('${job.id}')">⬛ Clock Out</button>`:`<button class="btn-punch-in" onclick="punchIn('${job.id}')" ${!attRunning?'disabled style="opacity:0.35;cursor:not-allowed;"':''}>▶ Clock In</button>`}
             <button class="card-btn" onclick="openEditJob('${job.id}')">Edit</button>
             <button class="card-btn del" onclick="deleteJob('${job.id}')">Delete</button>
           </div>
