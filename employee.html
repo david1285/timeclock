@@ -206,10 +206,11 @@ let attendanceLog = [];
 // Active timers live only in memory (per-device, intentional)
 // attendanceTimers track who is currently clocked in on THIS device
 // We store attendance clock-in time in Firestore so other devices can see it
-let activeTimers     = {}; // { jobId: { start } }
+let activeTimers     = {}; // { jobId: { start, empId } } — mirrors 'activeJobs' collection
 let attendanceTimers = {}; // { empId: { start } } — mirrors 'activeAttendance' collection
 
-const activeAttCol = collection(db, 'activeAttendance'); // live clock-in states
+const activeAttCol = collection(db, 'activeAttendance');
+const activeJobCol = collection(db, 'activeJobs');
 
 let currentEditJob = null, currentEditEmployee = null, pendingEmpId = null;
 let dbReady = 0; // count of listeners that have fired at least once
@@ -255,6 +256,12 @@ onSnapshot(activeAttCol, snap => {
   renderBoard(); renderStats();
 });
 
+onSnapshot(activeJobCol, snap => {
+  activeTimers = {};
+  snap.docs.forEach(d => { activeTimers[d.id] = d.data(); }); // jobId -> { start, empId }
+  renderBoard(); renderStats();
+});
+
 // ── Write helpers ─────────────────────────────────────────────────────
 async function saveEmployee(emp) {
   const { id, ...data } = emp;
@@ -279,7 +286,7 @@ async function deleteEmployee(empId) {
     ? `Delete ${emp.name}? This will also delete their ${empJobs.length} job(s).`
     : `Delete ${emp.name}?`;
   if (!confirm(msg)) return;
-  empJobs.forEach(j => { if (activeTimers[j.id]) delete activeTimers[j.id]; });
+  empJobs.forEach(j => { if (activeTimers[j.id]) deleteDoc(doc(db,'activeJobs',j.id)); });
   await Promise.all([
     deleteDoc(doc(db,'employees',empId)),
     ...empJobs.map(j => deleteDoc(doc(db,'jobs',j.id)))
@@ -298,7 +305,7 @@ function deleteJob(jobId) {
     '</div></div></div>';
 }
 async function confirmDeleteJob(jobId) {
-  if (activeTimers[jobId]) delete activeTimers[jobId];
+  if (activeTimers[jobId]) await deleteDoc(doc(db,'activeJobs',jobId));
   closeModal();
   await deleteDoc(doc(db,'jobs',jobId));
 }
@@ -374,7 +381,7 @@ window.punchIn = async function(jobId) {
           </div></div></div>`;
     return;
   }
-  activeTimers[jobId] = { start: Date.now() };
+  await setDoc(doc(db,'activeJobs',jobId), { start: Date.now(), jobId, empId: job ? job.empId : null });
   renderBoard(); renderStats();
 };
 
@@ -421,8 +428,8 @@ window.confirmPunchOut = async function(jobId) {
   const start=activeTimers[jobId].start, end=Date.now();
   const job=jobs.find(j=>j.id===jobId), emp=job?employees.find(e=>e.id===job.empId):null;
   const entry = { id:'l'+Date.now(), jobId, jobTitle:job?job.title:'—', empName:emp?emp.name:'—', start, end, duration:end-start, workNotes:notes, materials };
-  delete activeTimers[jobId];
   closeModal();
+  await deleteDoc(doc(db,'activeJobs',jobId));
   await saveLogEntry(entry);
   renderBoard(); renderStats();
 };
