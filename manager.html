@@ -87,11 +87,9 @@ tr:hover td { background: #1a1a22; }
 .td-notes { font-size: 11px; color: #9494aa; font-style: italic; max-width: 160px; }
 .td-materials { font-size: 11px; color: #7b6ef6; max-width: 140px; }
 .td-actions { white-space: nowrap; }
-.row-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.12s; }
-tr:hover .row-actions { opacity: 1; }
-.row-btn { background: none; border: none; cursor: pointer; padding: 3px 5px; border-radius: 4px; font-size: 12px; color: #555568; transition: all 0.1s; }
-.row-btn:hover { background: #2a2a35; color: #e2e2e8; }
-.row-btn.del:hover { background: #3a1a1a; color: #e87d5a; }
+.row-actions { display: flex; gap: 3px; }
+.row-btn { background: none; border: none; cursor: pointer; padding: 3px 5px; border-radius: 4px; font-size: 14px; color: #ffffff; transition: all 0.1s; }
+.row-btn:hover { background: #2a2a35; }
 .empty-table { text-align: center; padding: 40px 20px; color: #3a3a4a; font-size: 13px; }
 .amended-badge { font-size: 9px; font-family: 'DM Mono', monospace; background: rgba(240,170,85,0.15); color: #f0aa55; border: 1px solid rgba(240,170,85,0.3); border-radius: 4px; padding: 1px 5px; vertical-align: middle; margin-left: 3px; }
 .manual-badge  { font-size: 9px; font-family: 'DM Mono', monospace; background: rgba(123,110,246,0.15); color: #7b6ef6; border: 1px solid rgba(123,110,246,0.3); border-radius: 4px; padding: 1px 5px; vertical-align: middle; margin-left: 3px; }
@@ -145,7 +143,7 @@ tr:hover .row-actions { opacity: 1; }
   <div class="kb-header-right">
     <div class="live-time"><span class="sync-dot" id="syncDot"></span><span id="liveClock">--:--:--</span></div>
     <button class="btn btn-ghost" onclick="openManualJobEntry()">+ Job Entry</button>
-    <button class="btn btn-amber" onclick="openManualAttEntry()">+ Attendance Entry</button>
+    <button class="btn btn-ghost" onclick="openManualAttEntry()">+ Attendance Entry</button>
     <button class="btn btn-green" onclick="exportJobCSV()">⬇ Job CSV</button>
     <button class="btn btn-green" onclick="exportAttCSV()">⬇ Att CSV</button>
   </div>
@@ -451,7 +449,6 @@ function renderJobTable() {
       <td class="td-materials">${esc(e.materials||'—')}</td>
       <td class="td-actions"><div class="row-actions">
         <button class="row-btn" onclick="openEditJobEntry('${e.id}')" title="Edit">✎</button>
-        <button class="row-btn del" onclick="deleteJobEntry('${e.id}')" title="Delete">✕</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -473,7 +470,6 @@ function renderAttTable() {
       <td class="td-att-hours">${durHours(a.duration)}h</td>
       <td class="td-actions"><div class="row-actions">
         <button class="row-btn" onclick="openEditAttEntry('${a.id}')" title="Edit">✎</button>
-        <button class="row-btn del" onclick="deleteAttEntry('${a.id}')" title="Delete">✕</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -494,8 +490,7 @@ function renderStats() {
 }
 
 // ── Delete ────────────────────────────────────────────────────────────
-window.deleteJobEntry = async function(id) { await deleteDoc(doc(db,'jobLog',id)); };
-window.deleteAttEntry = async function(id) { await deleteDoc(doc(db,'attendanceLog',id)); };
+// delete functions removed — edits only
 
 // ── Edit job entry ────────────────────────────────────────────────────
 window.openEditJobEntry = function(id) {
