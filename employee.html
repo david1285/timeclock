@@ -12,23 +12,11 @@ body {
   font-family: 'DM Sans', sans-serif;
   color: #e2e2e8;
   min-height: 100vh;
-  background: linear-gradient(to bottom, #cc0000 0%, #7a0000 45%, #3a0000 100%);
-  background-attachment: fixed;
-  position: relative;
-}
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: url('damask.png') repeat;
-  background-size: 380px auto;
-  opacity: 0.18;
-  pointer-events: none;
-  z-index: 0;
-}
-.kb-header, .summary-bar, .kb-board, #modalContainer {
-  position: relative;
-  z-index: 1;
+  background:
+    url('damask.png') repeat,
+    linear-gradient(to bottom, #cc0000 0%, #7a0000 45%, #3a0000 100%);
+  background-size: 380px auto, cover;
+  background-attachment: scroll, fixed;
 }
 
 .kb-header { background: #16161a; border-bottom: 1px solid #2a2a35; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
