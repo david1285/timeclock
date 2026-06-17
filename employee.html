@@ -66,7 +66,7 @@ body {
 }
 .kb-logo span { color: var(--gold-light); }
 .kb-header-right { display: flex; gap: 12px; align-items: center; }
-.live-time { display: inline-flex; align-items: center; gap: 3px; }
+.live-time { font-family: 'DM Mono', monospace; font-size: 13px; color: #ffe033; letter-spacing: 0.06em; display: flex; align-items: center; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; vertical-align: middle; transition: background 0.3s; flex-shrink: 0; }
 .sync-dot.offline { background: var(--red-alert); }
 
@@ -100,10 +100,10 @@ body {
 .summary-stat { padding: 10px 20px; border-right: 1px solid var(--border2); display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
 .summary-stat:first-child { padding-left: 0; }
 .stat-label { font-family: 'Cinzel', serif; font-size: 9px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; }
-.stat-val { display: inline-flex; gap: 3px; align-items: center; min-height: 44px; }
-.stat-val.purple .nixie-tube.lit { color: var(--gold); text-shadow: 0 0 4px var(--gold), 0 0 12px var(--gold-dark), 0 0 24px rgba(201,168,76,0.4); box-shadow: inset 0 0 10px rgba(201,168,76,0.2), 0 0 6px rgba(201,168,76,0.2); background: radial-gradient(ellipse at 50% 40%, #1a1200 0%, #0a0800 60%, #000 100%); }
-.stat-val.green  .nixie-tube.lit { color: var(--green); text-shadow: 0 0 4px var(--green), 0 0 12px rgba(74,154,106,0.6); box-shadow: inset 0 0 10px rgba(74,154,106,0.2), 0 0 6px rgba(74,154,106,0.2); background: radial-gradient(ellipse at 50% 40%, #001408 0%, #000a04 60%, #000 100%); }
-.stat-val.amber  .nixie-tube.lit { color: var(--amber); text-shadow: 0 0 4px var(--amber), 0 0 12px rgba(200,112,32,0.5); box-shadow: inset 0 0 10px rgba(200,112,32,0.2), 0 0 6px rgba(200,112,32,0.2); background: radial-gradient(ellipse at 50% 40%, #180a00 0%, #0a0400 60%, #000 100%); }
+.stat-val { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: var(--text); }
+.stat-val.purple { color: #ffe033; }
+.stat-val.green  { color: #ff4411; }
+.stat-val.amber  { color: #ffaa00; }
 
 /* ── Board ── */
 .kb-board { display: flex; gap: 16px; padding: 20px; overflow-x: auto; min-height: calc(100vh - 104px); align-items: flex-start; }
@@ -438,7 +438,7 @@ body {
 <div class="kb-header">
   <div class="kb-logo">Foster<span> Vintage</span> <span style="color:var(--text-muted);font-family:'IM Fell English',serif;font-style:italic;font-size:12px;font-weight:400;margin-left:8px;letter-spacing:0.02em;">— Employee Board</span></div>
   <div class="kb-header-right">
-    <div class="live-time"><span class="sync-dot" id="syncDot"></span><div id="liveClock" style="display:inline-flex;gap:3px;align-items:center;"></div></div>
+    <div class="live-time"><span class="sync-dot" id="syncDot"></span><span id="liveClock">--:--:--</span></div>
     <button class="btn btn-ghost" onclick="openAddEmployee()">+ Employee</button>
     <button class="btn btn-primary" onclick="openAddJob(null)">+ Job</button>
   </div>
@@ -748,11 +748,11 @@ function renderStats() {
     if(isToday(t.start))    todayMs+=el;
     if(isThisWeek(t.start)) weekMs +=el;
   });
-  document.getElementById('statToday').innerHTML    = nixie(durHours(todayMs)+'h', true);
-  document.getElementById('statWeek').innerHTML     = nixie(durHours(weekMs)+'h', true);
-  document.getElementById('statActive').innerHTML   = nixie(String(Object.keys(activeTimers).length).padStart(2,'0'), true);
-  document.getElementById('statAttActive').innerHTML= nixie(String(Object.keys(attendanceTimers).length).padStart(2,'0'), true);
-  document.getElementById('statEmps').innerHTML     = nixie(String(employees.length).padStart(2,'0'), true);
+  document.getElementById('statToday').textContent     = durHours(todayMs)+'h';
+  document.getElementById('statWeek').textContent      = durHours(weekMs)+'h';
+  document.getElementById('statActive').textContent    = Object.keys(activeTimers).length;
+  document.getElementById('statAttActive').textContent = Object.keys(attendanceTimers).length;
+  document.getElementById('statEmps').textContent      = employees.length;
 }
 
 // ── Weekly helpers ────────────────────────────────────────────────────
@@ -884,10 +884,7 @@ setInterval(() => {
     }
   });
   renderStats();
-  const t = new Date();
-  const ts = t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  const lc = document.getElementById('liveClock');
-  if (lc) lc.innerHTML = nixie(ts, true);
+  document.getElementById('liveClock').textContent = new Date().toLocaleTimeString();
 },1000);
 
 // ── Job modal ─────────────────────────────────────────────────────────
@@ -941,8 +938,6 @@ window.saveEmployeeModal = async function() {
 
 window.closeModal = function() { document.getElementById('modalContainer').innerHTML=''; };
 
-const _t0 = new Date();
-const _ts0 = _t0.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-document.getElementById('liveClock').innerHTML = nixie(_ts0, true);
+document.getElementById('liveClock').textContent = new Date().toLocaleTimeString();
 </script>
 </html>
